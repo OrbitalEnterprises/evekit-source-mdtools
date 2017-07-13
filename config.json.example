@@ -1,0 +1,5 @@
+{
+    "tool_home" : "where you installed this tool",
+    "tmp_dir": "tmp directory used during trade extraction (holds bulk and history files)",
+    "output_dir": "directory where trades file should be copied"
+}

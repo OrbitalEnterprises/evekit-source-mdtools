@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# Usage: extract_trades <config_file> <YYYYMMDD>
+#
+# Comprosing:
+#
+# 1. Downloading bulk and market history files needed for the target date.
+# 2. Calling the extractor on the downloaded files.
+# 3. Copying the resulted trades to the specified target directory.
+#
+# This script assumes it is invoked from an environment with the appropriate version
+# of python and dependent libraries (see requirements.txt)
+#
+if [ $# -lt 2 ] ; then
+  echo "Usage: extract_trades <config_file> <YYYYMMDD>"
+  exit 1
+fi
+
+config=$1
+target_date=$2
+
+# extract configuration
+tool_home="$(jq -r -c '.tool_home' ${config})"
+tmp_dir="$(jq -r -c '.tmp_dir' ${config})"
+output_dir="$(jq -r -c '.output_dir' ${config})"
+
+# Construct prefixed file path for the given date
+# $1 - date
+# $2 - prefix
+# $3 - suffix
+data_file_path() {
+  YY=${1:0:4}
+  MM=${1:4:2}
+  DD=${1:6:8}
+ echo "https://storage.googleapis.com/evekit_md/${YY}/${MM}/${DD}/${2}_${YY}${MM}${DD}${3}"
+}
+
+# 1. Download needed files
+here=$(pwd)
+staging=${tmp_dir}/extract_trades_$$
+mkdir -p ${staging}
+cd ${staging}
+trap "cd ${here} ; rm -rf ${staging}" 0
+file_list="$(data_file_path ${target_date} interval '_5.bulk') $(data_file_path ${target_date} interval '_5.index.gz')"
+for i in $(seq 1 6) ; do
+  next_date=$(date --date="${target_date} - ${i} days" +"%Y%m%d")
+  file_list="${file_list} $(data_file_path ${next_date} market .bulk)"
+  file_list="${file_list} $(data_file_path ${next_date} market .index.gz)"
+done
+echo "Retrieving required files..."
+if ! wget -nv --show-progress ${file_list} ; then
+  echo "Failed to download required files, exiting"
+  exit 1
+fi
+
+# 2. Start extractor
+echo "Starting trade extraction..."
+export PYTHONPATH=${tool_home}/src
+if ! python ${tool_home}/src/extract_trades.py ${target_date} ; then
+  echo "Extraction failed, exiting"
+  exit 1
+fi
+
+# 3. Copy results to appropriate directory
+echo "Copying trade file..."
+outfile="trades_allregions_${target_date}"
+gzip ${outfile}
+cp ${outfile}.gz ${output_dir}
+
