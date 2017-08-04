@@ -15,3 +15,6 @@ buildNumber.properties
 /*.iml
 /.idea
 
+# Ignore python compilation files
+*.pyc
+
