@@ -20,9 +20,9 @@ config=$1
 target_date=$2
 
 # extract configuration
-tool_home="$(jq -r -c '.tool_home' ${config})"
-tmp_dir="$(jq -r -c '.tmp_dir' ${config})"
-output_dir="$(jq -r -c '.output_dir' ${config})"
+tool_home="$(/usr/bin/jq -r -c '.tool_home' ${config})"
+tmp_dir="$(/usr/bin/jq -r -c '.tmp_dir' ${config})"
+output_dir="$(/usr/bin/jq -r -c '.output_dir' ${config})"
 
 # Construct prefixed file path for the given date
 # $1 - date
