@@ -32,7 +32,7 @@ def get_market_history(history_date, types, regions):
     """
     date_range = pd.date_range(history_date - datetime.timedelta(days=6), history_date - datetime.timedelta(days=1))
     return MarketHistory.get_data_frame(dates=date_range, types=types, regions=regions,
-                                        config=dict(local_storage=".", tree=False, skip_missing=False,
+                                        config=dict(local_storage=".", tree=False, skip_missing=True,
                                                     verbose=False, use_online=False))
 
 
@@ -161,8 +161,16 @@ def infer_trades(type_set, region_set, order_book_full, market_history_full):
                     'location': str(location)})                
             # Second, look for orders which are removed between snapshots.
             removed_orders = set(current_snap.order_id).difference(set(next_snap.order_id))
+            current_order_list = list(current_snap.order_id)
             for order_id in removed_orders:
                 next_line = current_snap[current_snap.order_id == order_id].loc[current[0]]
+
+                # On very rare occasions, an order ID can appear twice (this is a bug)
+                order_count = current_order_list.count(order_id)
+                if order_count > 1:
+                    # Handle duplicate orders found in some data
+                    next_line = next_line.iloc[0]
+
                 if next_line.type_id not in type_set:
                     continue
                 # If the volume of a removed order does not exceed the threshold, then keep it as a trade.
@@ -200,6 +208,8 @@ def infer_trades_helper(next_types, compute_date):
     """
     full_type_list = [x[0] for x in next_types]
     full_book_list = [x[1] for x in next_types]
+    if len(full_book_list) == 0:
+        return []
     full_region_list = set()
     for x in full_book_list:
         for y in x['region_id'].unique():
@@ -294,8 +304,8 @@ def extract_trades(compute_date, fout):
 if __name__ == "__main__":
     # Date for which trades will be extracted
     target_date = datetime.datetime.strptime(sys.argv[1], "%Y%m%d")
-    type_batch_size = 200
-    if len(sys.argv > 2):
+    type_batch_size = 100
+    if len(sys.argv) > 2:
         type_batch_size = int(sys.argv[2])
     
     # Extract all trades
