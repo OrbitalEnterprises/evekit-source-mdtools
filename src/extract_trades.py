@@ -308,7 +308,7 @@ def extract_trades(compute_date, fout):
 if __name__ == "__main__":
     # Date for which trades will be extracted
     target_date = datetime.datetime.strptime(sys.argv[1], "%Y%m%d")
-    type_batch_size = 100
+    type_batch_size = 125
     if len(sys.argv) > 2:
         type_batch_size = int(sys.argv[2])
     
